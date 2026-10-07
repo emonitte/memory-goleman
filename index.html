@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Memoria: Liderazgo de Goleman</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --card-bg: #ffffff;
+            --card-matched: #e8f8f5;
+            --text-color: #333333;
+            --border-radius: 12px;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        p.subtitle {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #666;
+            max-width: 600px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .stats {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        #attempts-left {
+            color: #e74c3c;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 800px;
+            width: 100%;
+            perspective: 1000px; /* Para el efecto 3D del giro */
+        }
+
+        .card {
+            background-color: transparent;
+            width: 100%;
+            aspect-ratio: 3/4;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            transform: rotateY(180deg);
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        /* Cara posterior (la que se ve al inicio) */
+        .card-back {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .card-back::after {
+            content: '?';
+            font-size: 3rem;
+            font-weight: bold;
+            opacity: 0.5;
+        }
+
+        /* Cara frontal (la que muestra el contenido) */
+        .card-front {
+            background-color: var(--card-bg);
+            transform: rotateY(180deg);
+            border: 2px solid #eee;
+        }
+
+        .card.matched .card-front {
+            background-color: var(--card-matched);
+            border-color: var(--success-color);
+        }
+
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: space-around;
+        }
+
+        .card-emoji {
+            font-size: 3rem;
+            margin-bottom: 5px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: #555;
+            line-height: 1.2;
+            display: none; /* Oculto por defecto en pantallas pequeñas */
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-width: 90%;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .modal p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+            .card-emoji { font-size: 2rem; }
+            .card-title { font-size: 0.8rem; }
+            h1 { font-size: 1.5rem; }
+            .controls { flex-direction: column; gap: 10px; border-radius: 15px;}
+        }
+        
+        /* En pantallas más grandes, mostrar la descripción para nivel posgrado */
+        @media (min-width: 768px) {
+            .card-desc { display: block; }
+            .card-emoji { font-size: 3.5rem; }
+            .card-title { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Liderazgo de Daniel Goleman</h1>
+    <p class="subtitle">Encuentra los pares: Estilo de Liderazgo con su representación gráfica. Nivel Posgrado.</p>
+
+    <div class="controls">
+        <div class="stats">
+            Intentos restantes: <span id="attempts-left">20</span>
+        </div>
+        <button class="btn" id="restart-btn" onclick="initGame()">Reiniciar Juego</button>
+    </div>
+
+    <div class="game-board" id="game-board">
+        <!-- Las tarjetas se generarán dinámicamente con JS -->
+    </div>
+
+    <!-- Modal de Fin de Juego -->
+    <div class="modal" id="game-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">¡Felicidades! 🎉</h2>
+            <p id="modal-message">Has dominado los estilos de liderazgo.</p>
+            <button class="btn" onclick="initGame()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script>
+        // Datos de los estilos de liderazgo de Goleman. Cada estilo será un par.
+        // Concepto de par: Nombre/Descripción y Emoji representativo.
+        const leadershipStyles = [
+            {
+                id: 'coercitivo',
+                name: 'Coercitivo',
+                desc: 'Exige cumplimiento inmediato. "Haz lo que te digo".',
+                emoji: '💂‍♂️' // Representa autoridad/general
+            },
+            {
+                id: 'visionario',
+                name: 'Visionario',
+                desc: 'Moviliza hacia una visión. "Ven conmigo".',
+                emoji: '🔭' // Representa mirar al futuro/visión
+            },
+            {
+                id: 'afiliativo',
+                name: 'Afiliativo',
+                desc: 'Crea armonía y vínculos. "Las personas primero".',
+                emoji: '🤝' // Representa conexión/vínculo
+            },
+            {
+                id: 'democratico',
+                name: 'Democrático',
+                desc: 'Forja consenso. "¿Tú qué opinas?".',
+                emoji: '🗳️' // Representa votación/participación
+            },
+            {
+                id: 'timonel',
+                name: 'Timonel',
+                desc: 'Establece altos estándares de desempeño. "Haz como yo, ahora".',
+                emoji: '⏱️' // Representa ritmo/marcapasos
+            },
+            {
+                id: 'coach',
+                name: 'Coach',
+                desc: 'Desarrolla para el futuro. "Prueba esto".',
+                emoji: '🌱' // Representa crecimiento/desarrollo
+            },
+            // Añadimos dos variaciones para completar los 8 pares (16 cartas)
+            // Goleman definió 6, usaremos conceptos clave de IE (Inteligencia Emocional) relacionados.
+            {
+                id: 'autoconciencia',
+                name: 'Autoconciencia',
+                desc: 'Conocer las propias emociones y su impacto.',
+                emoji: '🧠' // Representa la mente/conciencia
+            },
+            {
+                id: 'empatia',
+                name: 'Empatía',
+                desc: 'Comprender las emociones de los demás.',
+                emoji: '❤️' // Representa sentir/conectar
+            }
+        ];
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        const maxAttempts = 20;
+        let currentAttempts = maxAttempts;
+        let isLocked = false;
+
+        // Sonidos generados mediante la API Web Audio (Tone.js no es necesario para sonidos simples, usamos osciladores)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            if (type === 'match') {
+                // Sonido mágico suave (Arpegio ascendente)
+                const now = audioCtx.currentTime;
+                playTone(523.25, now, 0.1); // C5
+                playTone(659.25, now + 0.1, 0.1); // E5
+                playTone(783.99, now + 0.2, 0.2); // G5
+            } else if (type === 'win') {
+                // Simulación de aplausos/victoria (ruido blanco + acordes)
+                const now = audioCtx.currentTime;
+                playTone(440, now, 0.5, 'triangle');
+                playTone(554.37, now, 0.5, 'triangle');
+                playTone(659.25, now, 0.5, 'triangle');
+                
+                // Ruido simulando aplausos breves
+                playNoise(now, 1.5);
+            } else if (type === 'lose') {
+                 // Sonido de derrota (tono descendente)
+                const now = audioCtx.currentTime;
+                playTone(300, now, 0.3, 'sawtooth');
+                playTone(200, now + 0.3, 0.4, 'sawtooth');
+            }
+        }
+
+        function playTone(frequency, startTime, duration, type = 'sine') {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.value = frequency;
+            
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration);
+        }
+
+        function playNoise(startTime, duration) {
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buffer;
+            
+            const gainNode = audioCtx.createGain();
+            // Envolvente para que suene más como un aplauso/platillo
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            // Filtro pasa banda para darle textura
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 1000;
+            
+            noiseSource.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            noiseSource.start(startTime);
+        }
+
+        function initGame() {
+            const board = document.getElementById('game-board');
+            const modal = document.getElementById('game-modal');
+            
+            board.innerHTML = '';
+            modal.classList.remove('active');
+            
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            currentAttempts = maxAttempts;
+            isLocked = false;
+            updateAttemptsDisplay();
+
+            // Preparar el mazo: 2 de cada tipo (Uno mostrará texto, otro mostrará el Emoji, o ambos pueden mostrar ambos para reforzar)
+            // Según el requerimiento: "MITAD DE UN TIPO DE LÍDER Y LA OTRA MITAD UNA IMAGEN"
+            let deck = [];
+            leadershipStyles.forEach(style => {
+                // Tarjeta 1: Texto/Concepto
+                deck.push({
+                    id: style.id,
+                    type: 'text',
+                    content: `<div class="card-title">${style.name}</div><div class="card-desc">${style.desc}</div>`,
+                    color: style.color
+                });
+                // Tarjeta 2: Imagen/Emoji
+                deck.push({
+                    id: style.id,
+                    type: 'image',
+                    content: `<div class="card-emoji">${style.emoji}</div>`
+                });
+            });
+
+            // Barajar (Algoritmo de Fisher-Yates)
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+
+            // Crear elementos DOM
+            deck.forEach((cardData, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.classList.add('card');
+                cardEl.dataset.id = cardData.id;
+                cardEl.dataset.index = index;
+
+                cardEl.innerHTML = `
+                    <div class="card-face card-front">
+                        <div class="card-content">
+                            ${cardData.content}
+                        </div>
+                    </div>
+                    <div class="card-face card-back"></div>
+                `;
+
+                cardEl.addEventListener('click', () => flipCard(cardEl, cardData));
+                board.appendChild(cardEl);
+                cards.push({ element: cardEl, data: cardData });
+            });
+        }
+
+        function flipCard(cardEl, cardData) {
+            // Evitar clics si el tablero está bloqueado, si la carta ya está volteada o emparejada
+            if (isLocked || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) {
+                return;
+            }
+
+            // Iniciar contexto de audio en el primer clic de usuario
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            cardEl.classList.add('flipped');
+            flippedCards.push(cardEl);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isLocked = true;
+            const [card1, card2] = flippedCards;
+            
+            const isMatch = card1.dataset.id === card2.dataset.id;
+
+            if (isMatch) {
+                // ¡Coincidencia!
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    playSound('match');
+                    matchedPairs++;
+                    
+                    flippedCards = [];
+                    isLocked = false;
+                    
+                    checkWin();
+                }, 500); // Pequeña pausa antes de marcar como emparejado
+                
+            } else {
+                // No coinciden
+                currentAttempts--;
+                updateAttemptsDisplay();
+                
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    isLocked = false;
+                    
+                    if (currentAttempts <= 0) {
+                        gameOver(false);
+                    }
+                }, 1000); // Tiempo que se muestran antes de voltearse de nuevo
+            }
+        }
+
+        function updateAttemptsDisplay() {
+            document.getElementById('attempts-left').textContent = currentAttempts;
+        }
+
+        function checkWin() {
+            if (matchedPairs === leadershipStyles.length) {
+                gameOver(true);
+            }
+        }
+
+        function gameOver(isWin) {
+            isLocked = true;
+            const modal = document.getElementById('game-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+
+            if (isWin) {
+                playSound('win');
+                modalTitle.textContent = "¡Felicidades! 🎉";
+                modalTitle.style.color = "var(--success-color)";
+                modalMessage.textContent = `Has emparejado todos los estilos de liderazgo de Goleman con ${currentAttempts} intentos sobrantes. ¡Excelente memoria!`;
+            } else {
+                playSound('lose');
+                modalTitle.textContent = "¡Fin del juego! 📉";
+                modalTitle.style.color = "#e74c3c";
+                modalMessage.textContent = "Te has quedado sin intentos. Repasa los estilos de liderazgo e inténtalo de nuevo.";
+            }
+
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 500);
+        }
+
+        // Iniciar el juego al cargar la página
+        window.onload = initGame;
+
+    </script>
+</body>
+</html>
